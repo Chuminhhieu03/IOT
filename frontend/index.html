@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Home</title>
+    <link rel="stylesheet" href="./assets/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+</head>
+<body class="w-100" style="height: 100vh">
+    <div class="container d-flex align-items-center w-100 h-100">
+        <div class="main-content w-100 d-flex">
+            <div class="content-1 col-9">
+                <div class="container p-4 h-100">
+                    <div class="row mx-auto w-100 mb-4 d-flex justify-content-between statistic" style="height: 45%;">
+                        <div class="col col1 d-flex info-device">
+                            <div class="col-4 me-3 mt-2 mb-2 d-flex align-items-center">
+                                <img src="./assets/image/lamp.png" alt="" class="w-100">
+                            </div>
+                            <div class="col mt-2 mb-2 d-flex flex-column align-items-center justify-content-between specific">
+                                <div class="row row1 mb-3 w-100">
+                                    <div class="row text-light fw-light" >Device</div>
+                                    <div class="row text-light">Luminens LED Modern Standing Lamp</div>
+                                </div>
+                                <div class="row row2 mb-2 w-100 d-flex flex-column justify-content-between">
+                                    <div class="row text-light ms-1 fw-light">Time Usage</div>
+                                    <div class="row text-light ms-1 mb-1 ">4H 27</div>
+                                </div>
+                                <div class="row row3 mb-2 w-100">
+                                    <div class="col d-flex justify-content-between flex-column me-3">
+                                        <div class="row text-light ms-1 mt-1 fw-light">On from</div>
+                                        <select name="time-on" id="" class="mb-2 text-light">
+                                            <option value="" class="text-light">00:00</option>
+                                        </select>        
+                                    </div>
+                                    <div class="col d-flex justify-content-between flex-column">
+                                        <div class="row text-light ms-1 mt-1 fw-light">Off from</div>
+                                        <select name="time-on" id="" class="mb-2 text-light">
+                                            <option value="" class="text-light">00:00</option>
+                                        </select>           
+                                    </div>
+                                </div>
+                                <div class="row row4 mb-2 w-100"></div>
+                            </div>
+                        </div>
+                        <div class="col col2"></div>
+                    </div>
+                    <div class="row mx-auto w-100 mb-4 d-flex justify-content-between info-sensor" style="height: 20%;">
+                        <div class="col col1 me-4">
+                            <p class="fs-5 text-light fw-light">Current Consumption <img src="./assets/image/power.png" alt="" style="height: 20px;margin-left: 5px;"></p>
+                            <p class="fs-5 text-light">1,5 kWH</p>
+                        </div>
+                        <div class="col col2 me-4">
+                            <p class="fs-5 text-light fw-light">Hudmidity <img src="./assets/image/hudmidity.png" alt="" style="height: 20px;"></p>
+                            <p class="fs-5 text-light">48,2 %</p>
+                        </div>
+                        <div class="col col3">
+                            <p class="fs-5 text-light fw-light">Temperature <img src="./assets/image/temperature.png" alt="" style="height: 30px;"></p> 
+                            <p class="fs-5 text-light">28 &deg;C</p>
+                        </div>
+                    </div>
+                    <div class="row mx-auto w-100 d-flex justify-content-between h-25 device">
+                        <div class="col d-flex flex-column col1 align-items-center me-5">
+                            <div class="d-flex justify-content-between w-100">
+                                <p class="status-device fs-5 d-inline text-light mt-1">Off</p>
+                                <div class="mt-2">
+                                    <input type="checkbox" class="switch" id="switch-1">
+                                    <label for="switch-1" class="switch-btn"></label>
+                                </div>
+                                
+                            </div>
+                            <div>
+                                <img src="./assets/image/lamp.png" alt="" style="height: 50px;">
+                                <p class="fw-light text-light mt-1 fs-5">Light</p>
+                            </div>
+                        </div>
+                        <div class="col d-flex flex-column col2 align-items-center me-5">
+                            <div class="d-flex justify-content-between w-100">
+                                <p class="status-device fs-5 d-inline text-light mt-1">Off</p>
+                                <div class="mt-2">
+                                    <input type="checkbox" class="switch" id="switch-2">
+                                    <label for="switch-2" class="switch-btn"></label>
+                                </div>
+                            </div>
+                            <div>
+                                <img src="./assets/image/lamp.png" alt="" style="height: 50px;">
+                                <p class="fw-light text-light mt-1 fs-5">Light</p>
+                            </div>
+                        </div>
+                        <div class="col d-flex flex-column col3 align-items-center me-5">
+                            <div class="d-flex justify-content-between w-100">
+                                <p class="status-device fs-5 d-inline text-light mt-1">Off</p>
+                                <div class="mt-2">
+                                    <input type="checkbox" class="switch" id="switch-3">
+                                    <label for="switch-3" class="switch-btn"></label>
+                                </div>
+                                
+                            </div>
+                            <div>
+                                <img src="./assets/image/lamp.png" alt="" style="height: 50px;">
+                                <p class="fw-light text-light mt-1 fs-5">Light</p>
+                            </div>
+                        </div>
+                        <div class="col d-flex flex-column col4 align-items-center">
+                            <div class="d-flex justify-content-between w-100 ">
+                                <p class="status-device fs-5 d-inline text-light mt-1">Off</p>
+                                <div class="mt-2">
+                                    <input type="checkbox" class="switch" id="switch-4">
+                                    <label for="switch-4" class="switch-btn"></label>
+                                </div>
+                               
+                            </div>
+                            <div>
+                                <img src="./assets/image/lamp.png" alt="" style="height: 50px;">
+                                <p class="fw-light text-light mt-1 fs-5">Light</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-3 bg-light"></div>
+        </div>
+    </div>
+</body>
+</html>
