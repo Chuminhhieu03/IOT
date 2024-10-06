@@ -1,89 +1,90 @@
-from pydantic import BaseModel
+import paho.mqtt.client as mqtt
+import asyncio
+from dotenv import load_dotenv
+import os
+import json
 import face_recognition
-import cv2
 import numpy as np
 from datetime import datetime
-import base64
-import os
 from pymongo import MongoClient
-import paho.mqtt.client as mqtt
-from dotenv import load_dotenv
+from utils import base64_to_img, get_face_encodings
+from bson import ObjectId
+
 
 load_dotenv()
 
-# MongoDB setup
-MONGO_URI = os.getenv("MONGO_URI")
+MQTT_BROKER = os.environ.get("MQTT_BROKER")
+MQTT_PORT = int(os.environ.get("MQTT_PORT"))
+MQTT_USERNAME = os.environ.get("MQTT_USERNAME") 
+MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD")
 
-# MQTT setup
-MQTT_BROKER = os.getenv("MQTT_BROKER")
-MQTT_PORT = os.getenv("MQTT_PORT")
+MONGO_URI = os.environ.get("MONGO_URI")
+mongo_client = MongoClient(MONGO_URI)
+db = mongo_client["smart_home"]
 
-client = MongoClient(MONGO_URI)
-db = client["face_recognition_db"]
 users_collection = db["users"]
-logs_collection = db["logs"]
 
+BACKEND_API = os.environ.get("BACKEND_API")
 
-# Function to process the received image and convert to a NumPy array
-def process_image(base64_image):
-    # Decode the base64 image
-    image_data = base64.b64decode(base64_image)
-    # Convert the image data to a numpy array and decode it to an image
-    nparr = np.frombuffer(image_data, np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    return img
-
-
-# Callback when a message is received from the MQTT broker
-def on_message(client, userdata, msg):
-    print(f"Message received from topic {msg.topic}")
-    # Decode the image and process it
-    image = process_image(msg.payload)
-    recognize(image)
-
-
-def sent_status(topic, status):
-    mqtt_client.publish(topic, status)
-
-mqtt_client = mqtt.Client()
+def custom_json_converter(obj):
+    if isinstance(obj, datetime):
+        return obj.isoformat()  # Chuyển datetime sang định dạng ISO 8601
+    elif isinstance(obj, ObjectId):
+        return str(obj)  # Chuyển ObjectId sang string
+    raise TypeError(f"Type {type(obj)} not serializable")
 
 def on_connect(client, userdata, flags, rc):
-    print(f"Connected to MQTT broker with result code {rc}")
-    client.subscribe('')
+    if rc == 0:
+        print("Connected successfully to broker")
+    else:
+        print(f"Failed to connect, return code {rc}")
+    client.subscribe('face-recognition/image')
 
-# Assign the callback functions
-mqtt_client.on_connect = on_connect
-mqtt_client.on_message = on_message
-
-# Connect to the MQTT broker
-mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
-mqtt_client.loop_start()  # Start the MQTT loop in the background
-
-# Convert the captured image to face encodings
-def get_face_encodings(image):
-    face_encodings = face_recognition.face_encodings(image)
-    if not face_encodings:
-        raise Exception("No face found in the image")
-    return face_encodings[0]
-
-# Infinite loop to process images continuously
-def recognize(image):
-    threshold = 0.5 
+async def on_message(client, userdata, message):
+    image = base64_to_img(message.payload)
+    threshold = 0.5 # Ngưỡng để set sự giống nhau giữa 2 khuôn mặt. Nhỏ hơn ngưỡng thì là giống 
     if image is not None:
         try:
-            face_encoding = get_face_encodings(image)
-            # Search the database for matching face encodings
-            users = users_collection.find()
+            face_encoding = get_face_encodings(image)[0]
+
+            users = users_collection.find({})
             for user in users:
-                 
-                if face_recognition.face_distance([np.array(user["face_encoding"])], face_encoding) < threshold:
-                    # Log the access
-                    logs_collection.insert_one({
-                        "user_id": user["_id"],
-                        "name": user["name"],
-                        "timestamp": datetime.now()
-                    })
-                    print({"message": "Face recognized", "user": user["name"]})
-                    break
+                distance = face_recognition.face_distance([np.array(user["face_encoding"])], face_encoding)
+                if distance < threshold:
+                    user_id = user["id"]
+                    current_time = datetime.now()
+                    user_log = db["logs"].find_one({"user_id": user_id}, sort=[("timeget", -1)])
+                    new_log = {
+                            "user_id": user_id,
+                            "name": user["name"],
+                            "timeget": current_time
+                        }
+                    if user_log is not None:
+                        previous_time_get = user_log["timeget"]
+                        time_diff = current_time - previous_time_get
+                        print(time_diff.total_seconds())
+                        if time_diff.total_seconds() > 5:
+                            db["logs"].insert_one(new_log)
+                            print(new_log)
+
+                    else:
+                        db["logs"].insert_one(new_log)
+                        print(new_log)
+                    client.publish('face-recognition/result', json.dumps(new_log, default=custom_json_converter))
         except Exception as e:
             print(f"Error processing image: {str(e)}")
+
+def run_on_message(client, userdata, message):
+    asyncio.run(on_message(client, userdata, message))
+
+client = mqtt.Client()
+
+client.tls_set(tls_version=mqtt.ssl.PROTOCOL_TLS)
+client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+client.on_connect = on_connect
+client.on_message = run_on_message
+
+
+client.connect(MQTT_BROKER, MQTT_PORT, 60)
+
+client.loop_forever()

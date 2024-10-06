@@ -1,67 +1,129 @@
-from fastapi import APIRouter, Body
-from database.setup import mongo_client
-from utils import get_face_encodings, process_image
+from fastapi import APIRouter, Body, UploadFile, File, HTTPException
+from database.setup import db
+from database.scheme import UserSchema
 import face_recognition
+from PIL import Image
+import numpy as np
 
-user = APIRouter()
+user_api = APIRouter()
 
-@user.post("/register")
-async def register_user(name: str = Body(...), base64_image: str = Body(...)):
+@user_api.post("/register")
+async def register_user(name: str = Body(...), address: str = Body(...), email: str = Body(...), img_file: UploadFile = File(...)):
     kt = 1002
-    db = mongo_client["face_recognition_db"]
+    message = ""
     try:
-        image = process_image(base64_image)
-        face_encoding = get_face_encodings(image)
-        # Check if the face already exists in the database
-        users_collection = db["users"]
-        existing_users = users_collection.find(
-            {"face_encoding": {"$exists": True}})
-        if existing_users:
-            for existing_user in existing_users:
-                if face_recognition.face_distance([existing_user["face_encoding"]], face_encoding) < 0.5:
-                    message = "Face already registered"
-        # Add new user and their face encoding to MongoDB
-        users_collection.insert_one({
-            "name": user.name,
-            "face_encoding": face_encoding.tolist()  # Store face encoding as list
+        # Đọc file ảnh và chuyển thành dạng numpy array
+        image = Image.open(img_file.file)
+        image = np.array(image)
+        image_vectors = face_recognition.face_encodings(image) # Chuyển thành vector đặc trưng dạng: [0.1, 0.2, 0.3, ...]
+        if len(image_vectors) == 0 or len(image_vectors) > 1:
+            message = "Invalid image"
+            raise HTTPException(status_code=400, detail="Invalid image")
+        image_vector = image_vectors[0]
+        # Thêm dữ liệu vào database
+        users = db['users'].find({})
+        ids = []
+        for user in users:
+            distance = face_recognition.face_distance([np.array(user["face_encoding"])], image_vector)
+            if distance < 0.5:
+                message = "Face already exists in the database"
+                raise HTTPException(status_code=400, detail="Face already exists in the database")
+            ids.append(user["id"])
+        if len(ids) == 0:
+            ids.append(0)
+        db['users'].insert_one({
+            "id": ids[-1] + 1,
+            "name": name,
+            "address": address,
+            "email": email,
+            "face_encoding": image_vector.tolist()
         })
         kt = 1000
         message = "User registered successfully"
-        return {
-            "status": kt,
-            "message": message
-        }
     except Exception as e:
         print(e)
-        
+    return {"status": kt, "message": message}
 
-@user.get("/logs")
-async def get_all_logs():
+
+@user_api.get("/get_all")
+async def get_all_users():
     kt = 1002
-    db = mongo_client["face_recognition_db"]
-    data = None
+    result = []
     try:
-        logs_collection = db["logs"]
-        logs = logs_collection.find()
-        logs_list = []
-
-        for log in logs:
-            # Convert ObjectId to string
-            log['_id'] = str(log['_id'])
-            # Include name and times (assuming fields are available in your MongoDB logs)
-        log_data = {
-            "id": log['_id'],
-            # Get the 'name' field or default to 'Unknown'
-            "name": log.get('name', 'Unknown'),
-            # Get 'entry_time' field or default to 'N/A'
-            "timestamp": log.get('timestamp', 'N/A'),
-        }
-        logs_list.append(log_data)
-        data = logs_list
+        users = db['users'].find({})
+        result = [UserSchema(many=True).dump(users)]
         kt = 1000
     except Exception as e:
         print(e)
-    return {
-        'status': kt,
-        'data': data
-    }
+    return {"status": kt, "data": result}
+
+
+@user_api.get("/get_by_id/{user_id}")
+async def get_user_by_id(user_id: int):
+    kt = 1002
+    result = None
+    try:
+        user = db['users'].find_one({"id": user_id})
+        if user:
+            result = UserSchema().dump(user)
+            kt = 1000
+    except Exception as e:
+        print(e)
+    return {"status": kt, "data": result}
+
+
+@user_api.get("/get_by_name/{name}")
+async def get_user_by_name(name: str):
+    kt = 1002
+    result = None
+    try:
+        users = db['users'].find({"name": {"$regex": name, "$options": "i"}})
+        if users:
+            result = UserSchema(many=True).dump(users)
+            kt = 1000
+    except Exception as e:
+        print(e)
+    return {"status": kt, "data": result}
+
+
+@user_api.delete("/delete_by_id/{user_id}")
+async def delete_user_by_id(user_id: int):
+    kt = 1002
+    result = None
+    try:
+        db['users'].delete_one({"id": user_id})
+        result = "Deleted successfully"
+        kt = 1000
+    except Exception as e:
+        print(e)
+    return {"status": kt, "data": result}
+
+
+@user_api.put("/update_by_id/{user_id}")
+async def update_user_by_id(user_id: int, name: str = Body(None), address: str = Body(None), email: str = Body(None), img_file: UploadFile = File(None)):
+    kt = 1002
+    result = None
+    try:
+        user = db['users'].find_one({"id": user_id})
+        if user:
+            new_values = {}
+            if name:
+                new_values["name"] = name
+            if address:
+                new_values["address"] = address
+            if email:
+                new_values["email"] = email
+            if img_file is not None:
+                image = Image.open(img_file.file)
+                image = np.array(image)
+                image_vectors = face_recognition.face_encodings(image)
+                if len(image_vectors) == 0 or len(image_vectors) > 1:
+                    raise Exception("Invalid image")
+                image_vector = image_vectors[0]
+                new_values["face_encoding"] = image_vector.tolist()
+            db['users'].update_one({"id": user_id}, {"$set": new_values})
+            result = "Updated successfully"
+            kt = 1000
+    except Exception as e:
+        print(e)
+    return {"status": kt, "data": result}

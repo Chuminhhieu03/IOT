@@ -1,0 +1,3 @@
+- Chạy socket: cd socket -> python index.py. Cổng 8001
+- Chạy app: cd app -> python recognize.py
+- Chạy backend: cd backend -> python main.py. Cổng 8000
